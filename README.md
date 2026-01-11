@@ -9,11 +9,11 @@
 
 ### 전체 구성(연구소 ↔ 기숙사, ISP A/B 분리)
 
-<img width="1798" height="1086" alt="스크린샷 2026-01-11 160703" src="https://github.com/user-attachments/assets/5b609e9b-024d-4e57-8c5b-b2cdba2b2c3f" />
+<img width="1773" height="1079" alt="스크린샷 2026-01-11 165702" src="https://github.com/user-attachments/assets/b987a7d2-53ca-4635-96f2-0add3236a1e3" />
 
 ### VLAN/데이터 흐름 상세(802.1X 인증 + DHCP 흐름)
 
-<img width="1377" height="946" alt="스크린샷 2026-01-11 160711" src="https://github.com/user-attachments/assets/7d39afb2-550a-411d-9590-f9a5723572c5" />
+<img width="1389" height="593" alt="스크린샷 2026-01-11 165709" src="https://github.com/user-attachments/assets/90f75c41-7581-4742-8c90-c8b616e1be2f" />
 
 ---
 
@@ -45,13 +45,13 @@
   - VLAN별 IP 할당 요청 처리(각 VLAN Scope 운영)
   - VLAN800(기숙사)의 경우 **기본 게이트웨이는 NAS_GW_2**로 할당
 
-- **Backbone Switch (NAS_BB)**  
+- **Backbone Switch (NAC_BSW)**  
   - 연구소 내부 네트워크의 중심(집선/정책 적용)
   - VLAN300/310의 정책 기반 접근통제 및 기본 게이트웨이 역할
 
-- **Gateway Switch (NAS_GW_2)**  
-  - **VLAN800(기숙사)**의 기본 게이트웨이
-  - 기숙사 트래픽을 **ISP B**로 아웃바운드(연구소 내부와 분리)
+- **Gateway Switch (NAC_GW_1,NAC_GW_2)**  
+  - 기본 게이트웨이
+  - 트래픽을 각각 **ISP A or ISP B**로 아웃바운드
 
 ---
 
@@ -68,7 +68,7 @@
 
 ### VLAN800 (기숙사 VLAN)
 - 연구소 내부로 라우팅되지 않음
-- NAS_GW_2를 통해 **ISP B로만 통신**하도록 분리
+- NAC_GW_2를 통해 **ISP B로만 통신**하도록 분리
 
 ---
 
@@ -100,8 +100,8 @@
 ### 5.4 DHCP IP 할당 경로
 - DHCP 서버는 VLAN300에서 운영하며, 각 VLAN별 IP 할당 요청을 처리
 - VLAN800(기숙사) 단말은 DHCP를 통해 IP를 할당받으며:
-  - **기본 게이트웨이(Default Gateway)는 NAS_GW_2의 VLAN800 인터페이스 IP**
-- 그 외 VLAN(예: 300/310 등)은 기본 게이트웨이가 Backbone(NAS_BB)로 설정됨
+  - **기본 게이트웨이(Default Gateway)는 NAC_GW_2의 VLAN800 인터페이스 IP**
+- 그 외 VLAN(예: 300/310 등)은 기본 게이트웨이가 Backbone(NAC_BSW)로 설정됨
 
 ---
 
