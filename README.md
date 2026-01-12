@@ -16,6 +16,12 @@
 
 <img width="1447" height="1004" alt="스크린샷 2026-01-12 190143" src="https://github.com/user-attachments/assets/dfabd43e-6437-499b-b775-e7374a56cb76" />
 
+
+### EVE NG 구성
+
+<img width="621" height="598" alt="스크린샷 2026-01-12 185647" src="https://github.com/user-attachments/assets/be12ed94-0a05-4fd3-a9e1-57f03aa31515" />
+
+
 ---
 
 
