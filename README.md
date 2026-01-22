@@ -6,17 +6,22 @@
 > 진행 중(Working In Progress): 설계/구현/문서화를 동시에 진행합니다.  
 > README는 “설계(Design) → 구현(Implementation) → 검증(Verification) → 자동화(Automation)” 순으로 지속 업데이트됩니다.
 
+> 일부 스크린샷/토폴로지/설정 값은 현재 구성과 차이가 있을 수 있으며, 최신 상태는 **레포지토리의 최근 커밋**을 기준으로 합니다.
+
 ---
 
 ## 1) 전체 구성도
 
-### EVE NG Lab
-> 아래 이미지랑 업로드된 unl은 최신 버전이 아닙니다...
-<img width="707" height="684" alt="스크린샷 2026-01-17 012348" src="https://github.com/user-attachments/assets/94592383-60d9-45bb-9bdb-640bbd5ce791" />
+### 🧱 가상화 환경(VMware + EVE-NG) 구성
+
+<img width="300" height="310" alt="스크린샷 2026-01-22 094737" src="https://github.com/user-attachments/assets/855a9778-679e-48e2-9227-1802b60cd33a" />
 
 
-### VLAN & Subnet Design (Enterprise)
-> 아래 이미지는 **전체 VLAN/서브넷 설계**의 최신 버전입니다.
+### 🧱EVE NG Lab
+<img width="1130" height="936" alt="스크린샷 2026-01-22 094548" src="https://github.com/user-attachments/assets/9d427c4c-3928-4eda-a1d8-19e64b6bf6d1" />
+
+
+### 🧱 VLAN & Subnet Design (Enterprise)
 
 <img width="1885" height="1037" alt="스크린샷 2026-01-22 091131" src="https://github.com/user-attachments/assets/3e57fdf4-b788-4dbe-931d-21cd5e57e234" />
 
