@@ -1,151 +1,156 @@
 # 802.1X 기반 네트워크 접근통제(NAC) 구축 (FreeRADIUS)
 
-본 프로젝트는 **802.1X + FreeRADIUS**를 활용하여 사용자 단말의 네트워크 접속을 인증하고,  
-정책에 따라 **스위치 포트 제어 / VLAN 할당 / 서비스 접근 통제**를 수행하는 NAC(Network Access Control) 구축 예시입니다.
+본 저장소는 **기업(Enterprise) 환경을 가정한 802.1X NAC 랩**입니다.  
+**Access Switch(Authenticator) + FreeRADIUS(Authentication Server)** 를 통해 단말의 네트워크 접속을 인증하고, 정책에 따라 **포트 제어 / 동적 VLAN 할당 / DHCP 기반 IP 부여 / 로그(Accounting·Syslog) 수집·가공**까지 단계적으로 구현합니다.
 
-> 🛠️ **현재 토폴로지/인프라 설계 업데이트 중!!**  
-> 문제가 좀 있어서 기존 인프라 구성과 네트워크 토폴로지를 재설계하는 과정이며, **설계와 동시에 실습도 병행**하고 있습니다.  
-> 따라서 문서 내용이 일부 최신 구성과 다를 수 있고, 설계가 확정되는 대로 README(구성도, IP/VLAN, 설정 절차)를 최신 기준으로 정리해 업데이트하겠습니다.
+> 진행 중(Working In Progress): 설계/구현/문서화를 동시에 진행합니다.  
+> README는 “설계(Design) → 구현(Implementation) → 검증(Verification) → 자동화(Automation)” 순으로 지속 업데이트됩니다.
 
-> 🧪 **랩 파일/진행 상황 안내**  
-> 현재 업로드된 EVE-NG 랩 파일은 **토폴로지(구성도)만 완성된 상태**이며, 장비/서버 **세부 설정은 아직 적용되지 않은 초안**입니다.  
-> 현재는 **새로운 랩 파일로 토폴로지를 다시 설계**하고 있고, 동시에 **서버 인프라(MySQL/FreeRADIUS/DHCP/VLAN 등) 세팅을 진행 중**입니다.  
-> 설계와 세팅이 안정화되면 **최신 랩 파일 + 설정 내용 + 검증 절차**를 기준으로 README를 업데이트하겠습니다.
-
- 
 ---
 
-## 1) 토폴로지
+## 1) 전체 구성도
 
-### 전체 구성(연구소 ↔ 기숙사, ISP A/B 분리)
+### EVE NG Lab
+> 아래 이미지랑 업로드된 unl은 최신 버전이 아닙니다...
+<img width="707" height="684" alt="스크린샷 2026-01-17 012348" src="https://github.com/user-attachments/assets/94592383-60d9-45bb-9bdb-640bbd5ce791" />
 
-<img width="707" height="684" alt="스크린샷 2026-01-17 012348" src="https://github.com/user-attachments/assets/c4e15781-533f-40d0-b49b-f3a71de402da" />
 
+### VLAN & Subnet Design (Enterprise)
+> 아래 이미지는 **전체 VLAN/서브넷 설계**의 최신 버전입니다.
 
-### VLAN & Subnet Design
-
-<img width="1815" height="948" alt="스크린샷 2026-01-17 014147" src="https://github.com/user-attachments/assets/80424540-596f-44cb-a44d-d1334d6aa358" />
+<img width="1885" height="1037" alt="스크린샷 2026-01-22 091131" src="https://github.com/user-attachments/assets/3e57fdf4-b788-4dbe-931d-21cd5e57e234" />
 
 
 ---
 
+## 2) VLAN / Subnet 요약
 
-## 2) VLAN 설계
+### 2.1 관리/보안 인프라
+| VLAN | Name | 목적 | Subnet | Gateway(SVI) |
+|---:|---|---|---|---|
+| 100 | Management_Security | 보안/인증 인프라(FreeRADIUS/DHCP/Log) | 10.0.10.0/28 | 10.0.10.1 |
+| 110 | Management_Device | 네트워크 장비 관리(SSH/SNMP/Syslog 등) | 10.0.11.0/28 | 10.0.11.1 |
 
-| VLAN | 목적 | 주요 시스템/대상 | 기본 게이트웨이 | 라우팅/격리 정책 |
-|------|------|------------------|------------------|------------------|
-| **100** | 보안/인증 인프라 운영 VLAN | 보안장비, **인증 서버(FreeRADIUS)**, **DHCP 서버** | 접근통제 정책 적용: **관리자 외 접근 차단**, 서비스 포트 단위 허용 |
-| **110** | 네트워크 장비 관리 VLAN | 스위치/게이트웨이 관리 IP, 원격 유지보수 트래픽 | 인증 서버와의 통신 허용(인증/운영 관리 목적) |
-| **500** | 기숙사 사용자 VLAN | 기숙사 사용자 단말(데스크탑 등) |
+### 2.2 서버 존
+| VLAN | Name | 목적 | Subnet | Gateway(SVI) |
+|---:|---|---|---|---|
+| 200 | Server_Development | 개발 서버 존 | 10.0.20.0/28 | 10.0.20.1 |
+| 210 | Server_Business | 행정/업무 서버 존 | 10.0.21.0/28 | 10.0.21.1 |
+
+### 2.3 사용자 존(부서/역할 기반)
+| VLAN | Name | 대상 | Subnet | Gateway(SVI) |
+|---:|---|---|---|---|
+| 300 | User_Security | 보안 부서 | 10.0.30.0/24 | 10.0.30.1 |
+| 310 | User_Development | 개발 부서 | 10.0.31.0/24 | 10.0.31.1 |
+| 320 | User_Business | 행정/업무 부서 | 10.0.32.0/24 | 10.0.32.1 |
+| 330 | User_Partner_Company | 협력업체 | 10.0.33.0/24 | 10.0.33.1 |
+| 340 | User_Guest | 방문자(게스트) | 10.0.34.0/24 | 10.0.34.1 |
+
+### 2.4 직원 생활망(사내망과 분리)
+| VLAN | Name | 목적 | Subnet | Gateway(SVI) |
+|---:|---|---|---|---|
+| 500 | User_Coporation_Life | **직원 생활망(인터넷 전용, 사내망 접근 제한)** | 172.16.50.0/24 | 172.16.50.1 |
+
+### 2.5 802.1X 인증 흐름 VLAN
+| VLAN | Name | 목적 | Subnet | Gateway(SVI) |
+|---:|---|---|---|---|
+| 800 | Auth_Fail | 인증 실패(격리/제한) | 10.0.80.0/24 | 10.0.80.1 |
+| 810 | Auth_Service | 인증/온보딩(임시) | 10.0.81.0/24 | 10.0.81.1 |
 
 ---
 
 ## 3) 구성 요소와 역할
 
-- **Supplicant (요청자)**: 인증 대상 단말(기숙사/내부 데스크탑)
-  - 네트워크 접속 시 802.1X 인증 정보(EAPOL)를 전송
-
-- **Authenticator (인증자)**: 사용자 단말이 직접 연결되는 **Access Switch**
-  - 802.1X 인증을 중계하고, 인증 결과에 따라 **스위치 포트 제어(허용/차단/권한 VLAN 할당)** 수행
-  - 인증 서버로 RADIUS 요청 전달 및 Accounting 정보 수집(선택)
-
-- **Authentication Server (인증 서버)**: **FreeRADIUS**
-  - 인증자(스위치)로부터 인증 정보를 받아 사용자 인증 수행
-  - 사용자 권한/정책에 따라 **VLAN ID 할당**, 포트 제어 정책 적용을 지원
-
-- **DHCP Server (DHCP 서버)**  
-  - VLAN별 IP 할당 요청 처리(각 VLAN Scope 운영)
-  - VLAN800(기숙사)의 경우 **기본 게이트웨이는 DSW2**로 할당
-
-- **Distribution Switch (DSW)**
-  - 내부 네트워크의 중심
-  - 기본 게이트웨이 역할
-  - Inter-VLAN Routing (SVI)
-  - 상위 계층(Core/Edge)과 연결
-    
-- **Edge Router **  
-  - ISP / Internet / 외부 네트워크와 직접 연결
+- **Supplicant(요청자)**: 인증 대상 단말(Windows 등)
+  - 링크 업 시 EAPOL로 802.1X 인증 시작
+- **Authenticator(인증자)**: Access Switch
+  - EAPOL을 중계하고, RADIUS 결과에 따라 포트 제어 및 VLAN 전환
+- **Authentication Server(인증 서버)**: FreeRADIUS
+  - 인증(PEAP/EAP-TLS 등) 수행
+  - 정책 기반 VLAN ID(Tunnel-Private-Group-ID) 반환 가능
+- **DHCP Server**
+  - VLAN별 주소 풀 운영 및 IP 할당
+  - 인증 성공 후 해당 VLAN에서 정상 IP 할당이 되는지 검증
+- **Syslog → MySQL(DB)**
+  - DHCP 이벤트를 포함한 시스템 로그를 DB에 적재
+  - 이후 **DHCPACK 로그 파싱 → 별도 테이블로 정규화**하여 활용
+- **Distribution/Core(게이트웨이)**
+  - SVI 기반 Inter-VLAN Routing
+  - 상단 Edge/Internet 구간과 연동
 
 ---
 
-## 4) 접근통제 정책 개요
+## 4) 접근통제(Policy) 개요
 
-### VLAN100 (보안/인증 인프라)
-- **관리자 이외 접근 차단**
-- 시스템별 서비스 특성에 따라 **허용 포트/허용 대상 호스트를 세분화하여 통제**
-  - 예) SSH(22), RADIUS(1812/1813), DHCP(67/68), DNS(53), HTTP/HTTPS(80/443) 등
+### 4.1 보안/인증 인프라(VLAN100)
+- 관리자만 접근 (기본 차단 + 예외 허용)
+- 서비스 포트 단위로 최소 허용
+  - 예: SSH(22), RADIUS(1812/1813), DHCP(67/68), DNS(53), HTTP/HTTPS(80/443)
 
-### VLAN110 (관리 VLAN)
-- 네트워크 장비 관리 IP 및 원격 유지보수 트래픽을 위한 VLAN
-- 인증 서버(FreeRADIUS)와 인증/운영 관리를 위한 통신이 가능하도록 구성
+### 4.2 관리 VLAN(VLAN110)
+- 장비 관리 트래픽(SSH/SNMP/Syslog) 중심
+- FreeRADIUS/DHCP/로그 서버와 운영 통신 허용
 
-### VLAN500 (기숙사 VLAN)
-- 연구소 내부로 라우팅되지 않음
-- GW2 통해 **ISP B로만 통신**하도록 분리
-
----
-
-## 5) 트래픽 흐름(데이터/인증/DHCP)
-
-<img width="1545" height="767" alt="스크린샷 2026-01-17 020029" src="https://github.com/user-attachments/assets/91ba3bf1-5519-4997-a8ea-3c3a9cab60d2" />
-
-### 5.1 물리 연결 경로(Physical)
-- Backbone ↔ Bridge ↔ Access 스위치로 L2/L3 경로 구성
-- 인증 서버/ DHCP 서버는 Backbone 영역(VLAN300)에 위치
-
-### 5.2 데이터 통신 경로(Data Plane)
-- 인증 완료 후:
-  - 연구소 내부 VLAN(예: 100/110 등)은 Backbone을 기본 게이트웨이로 통신
-  - 기숙사 VLAN500은 DSW2 기본 게이트웨이로 통신
-
-### 5.3 802.1X 인증 패킷 전달 경로(Control Plane)
-구성 요소: **요청자(Supplicant) → 인증자(Authenticator) → 인증서버(FreeRADIUS)**
-
-1) 단말이 Access Switch 포트에 연결되면 **802.1X(EAPOL) 인증 요청**
-2) Access Switch(Authenticator)는 인증 정보를 **RADIUS로 캡슐화**하여 FreeRADIUS로 전달  
-3) FreeRADIUS는 사용자 정상 여부를 인증하고, 정책에 따라:
-   - 포트 허용/차단
-   - VLAN ID 할당(권한 VLAN)
-   - (선택) Accounting 정보 저장
-4) 인증 성공 시 해당 단말 포트가 데이터 트래픽을 송수신할 수 있도록 전환됨
-
-> 기숙사 ↔ 인증 서버 구간 스위치들에는 **VLAN110이 선언**되어 있으며,  
-> 이를 통해 기숙사 측 인증자(Access Switch)와 인증 서버 간 **인증 정보 전달 경로**가 구성된다.
-
-### 5.4 DHCP IP 할당 경로
-- DHCP 서버는 VLAN100에서 운영하며, 각 VLAN별 IP 할당 요청을 처리
-- VLAN500(기숙사) 단말은 DHCP를 통해 IP를 할당받으며:
-  - **기본 게이트웨이(Default Gateway)는 DSW2 VLAN500 인터페이스 IP**
-- 그 외 VLAN(예: 100/110 등)은 기본 게이트웨이가 Distribution(DSW1)로 설정됨
+### 4.3 직원 생활망(VLAN500)
+- **사내망(User/Server/Management)으로 라우팅 금지**
+- 인터넷(외부)만 허용하는 “분리망” 컨셉
 
 ---
 
-## 진행 현황 (Status)
+## 5) DHCP 로그 기반 DB 자동화 (핵심 확장 포인트)
 
-- 본 프로젝트는 **EVE-NG** 환경에서 구현을 진행한다.
-- 현재 단계에서는 전체 아키텍처/토폴로지 및 VLAN 분리(100/110/500), 인증 흐름(802.1X ↔ RADIUS), DHCP 흐름 등 **큰 구조(High-level Design)** 를 우선 설계하였다.
-- 세부 구성(장비별 설정, 정책 룰, 인증 방식(EAP) 세부, 예외 처리, 검증 로그/캡처 등)은 **단계적으로 추가/고도화**할 예정이다.
+목표: **“DHCP 이벤트(임대) 정보를 DB로 정규화 → 이후 정책/운영에 활용”**
+
+### 5.1 전체 흐름
+1) **메시지 식별(Identify)**  
+2) **파싱(Parse)**  
+3) **저장(Store)**
+
+### 5.2 데이터 소스
+- MySQL: `syslog` DB
+- 테이블: `SystemEvents`
+- 컬럼: `Message`
+- 대상 메시지: `Message LIKE 'DHCPACK on%'`
+
+예시 형태(개념):
+- `DHCPACK on <IP> to <MAC> (<hostname>) via ens4 ...`
+
+### 5.3 파싱 대상 필드(저장 컬럼)
+- **로그 발생 시각(logtime)**    
+- **할당 IP(ipaddr)**  
+- **클라이언트 MAC(macaddr)**  
+- **호스트 이름(hostname)**
+- **로그 메세지(message)**  
+- **VLAN ID(vlanid)**  
+
+> 파싱된 결과는 별도 테이블로 저장하여, 이후 **RADIUS DB(radius)와 연계/조회**하도록 설계합니다.
 
 ---
 
-## 단계별 구현 계획 (Roadmap)
+## 6) 단계별 구현 계획 (Roadmap)
 
-1. 네트워크 인프라 구성 (EVE-NG)
-- [ v ] 장치 연결 / 백본 / 연구소 스위치 / 기숙사 스위치 / 연계 스위치
-- [ v ] 테스트용 단말기 (Window10) / DHCP & 인증 서버 Ubuntu(24.04.3 LTS) 설치 -> 코어는 1~2코어로 최대한 가볍게 세팅
-- [ v ] EVE-NG에서 L3 장비를 Cloud0에 연결하고, 해당 인터페이스가 VMware NAT(vmnet8)로부터 DHCP로 IP를 할당받아 외부 인터넷 통신이 정상적으로 이루어짐을 검증함. 향후 FreeRADIUS 설치 및 외부 인증 서버 연동 실습을 고려하여, 패키지 다운로드와 서비스 연계를 위한 인터넷 접근 가능 환경을 사전에 확보함.
-- [ v ]  연구소·기숙사 게이트웨이 포함(= L2/L3/VLAN/라우팅 기본 뼈대) 
-2. 인증 인프라 구성 (FreeRadius)
-- [ v ] OS 설치 및 환경 설정
-- [ v ] FreeRADIUS 및 관련 소프트웨어 설치/기본 설정
-- [ v ] 사설 인증서 설치 + 인증자/테스트 사용자 등록
-- [ v ] DHCP 설정(가상 인터페이스 포함) + 스위치 환경 설정
-- [ v ] 단말 사설 인증서 설치 + 802.1X 활성화/어댑터 설정
-- [ v ]  동작/인증 테스트 (가상 이미지 제약으로 검증 범위 제한 → 이미지/모델 변경 후 재검증 예정)
-3. DBMS 연동 DHCP 주소 관리 자동화
-- [ v ] Netplan: VLAN별 서브인터페이스 구성 및 DHCP 서버가 리슨할 인터페이스 지정
-- [ v ] VLAN별 subnet / range 구성 ( DHCP Pool )
->  업데이트 예정
-.....
+### 6.1 네트워크 인프라(EVE-NG)
+- [x] L2/L3 스위치/엣지/서버 기본 연결
+- [x] VMware NAT(vmnet8) 기반 외부 인터넷 접근 경로 확보(패키지 설치/업데이트 목적)
+- [x] VLAN/게이트웨이(SVI) 뼈대 구성
 
+### 6.2 802.1X 인증 인프라(FreeRADIUS)
+- [x] Ubuntu 서버 기본 세팅
+- [x] FreeRADIUS 설치 및 초기 구성
+- [x] 테스트 사용자/인증자(스위치) 등록 및 인증 흐름 검증(PEAP 기반)
 
+### 6.3 DHCP 구성
+- [x] VLAN별 DHCP Scope/Pool 구성
+- [x] 단말 DHCP 할당 검증(인증/비인증 포트 시나리오 분리)
+- [x] 인증 성공 후 VLAN 전환 + DHCP 재할당(End-to-End 검증)
+
+### 6.4 Syslog → MySQL 적재 및 DHCP 로그 정규화 
+- [x] `rsyslog-mysql` 설치 및 MySQL(syslog) 적재 확인
+- [x] 계정/권한 확인 및 `SystemEvents` 로그 저장 여부 검증
+- [x] `DHCPACK on%` 메시지 패턴 식별 및 파싱 대상 필드 정의  
+- [x] `syslog.SystemEvents`에서 DHCP 관련 로그 조회/필터링 검증 (`Message LIKE 'DHCPACK on%'`)
+- [x] `radius` DB에 `dhcp_log` 테이블 생성 후, SystemEvents 로그를 파싱하여 저장(정규화) 완료
+- [x] 적재 결과 검증: `radius.dhcp_log`에 최신 레코드가 누적되는지 확인
+- [ ] 적재된 이벤트 중 `DHCPACK on%` 메시지를 자동 식별·파싱하여 `radius.dhcp_log` 테이블에 정규화 형태로 지속 저장(자동화)
+
+---
