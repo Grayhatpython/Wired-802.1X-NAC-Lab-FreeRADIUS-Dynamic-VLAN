@@ -18,7 +18,7 @@
 
 
 ### 🧱EVE NG Lab
-<img width="1130" height="936" alt="스크린샷 2026-01-22 094548" src="https://github.com/user-attachments/assets/9d427c4c-3928-4eda-a1d8-19e64b6bf6d1" />
+<img width="1239" height="986" alt="스크린샷 2026-02-03 164404" src="https://github.com/user-attachments/assets/5220bc87-f474-4469-96b3-142dc6b3585d" />
 
 
 ### 🧱 VLAN & Subnet Design (Enterprise)
