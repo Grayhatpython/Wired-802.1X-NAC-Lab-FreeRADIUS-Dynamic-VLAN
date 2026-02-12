@@ -23,7 +23,8 @@
 
 ### 🧱 VLAN & Subnet Design (Enterprise)
 
-<img width="1885" height="1037" alt="스크린샷 2026-01-22 091131" src="https://github.com/user-attachments/assets/3e57fdf4-b788-4dbe-931d-21cd5e57e234" />
+<img width="1771" height="988" alt="스크린샷 2026-02-12 174246" src="https://github.com/user-attachments/assets/d41509e0-16f9-4007-9b81-91cd08853354" />
+
 
 
 ---
@@ -102,37 +103,7 @@
 
 ---
 
-## 5) DHCP 로그 기반 DB 자동화 (핵심 확장 포인트)
-
-목표: **“DHCP 이벤트(임대) 정보를 DB로 정규화 → 이후 정책/운영에 활용”**
-
-### 5.1 전체 흐름
-1) **메시지 식별(Identify)**  
-2) **파싱(Parse)**  
-3) **저장(Store)**
-
-### 5.2 데이터 소스
-- MySQL: `syslog` DB
-- 테이블: `SystemEvents`
-- 컬럼: `Message`
-- 대상 메시지: `Message LIKE 'DHCPACK on%'`
-
-예시 형태(개념):
-- `DHCPACK on <IP> to <MAC> (<hostname>) via ens4 ...`
-
-### 5.3 파싱 대상 필드(저장 컬럼)
-- **로그 발생 시각(logtime)**    
-- **할당 IP(ipaddr)**  
-- **클라이언트 MAC(macaddr)**  
-- **호스트 이름(hostname)**
-- **로그 메세지(message)**  
-- **VLAN ID(vlanid)**  
-
-> 파싱된 결과는 별도 테이블로 저장하여, 이후 **RADIUS DB(radius)와 연계/조회**하도록 설계합니다.
-
----
-
-## 6) 단계별 구현 계획 (Roadmap)
+## 5) 단계별 구현 계획 (Roadmap)
 
 ### 6.1 네트워크 인프라(EVE-NG)
 - [x] L2/L3 스위치/엣지/서버 기본 연결
@@ -157,6 +128,8 @@
 - [x] `radius` DB에 `dhcp_log` 테이블 생성 후, SystemEvents 로그를 파싱하여 저장(정규화) 완료
 - [x] 적재 결과 검증: `radius.dhcp_log`에 최신 레코드가 누적되는지 확인
 - [x] 적재된 이벤트 중 `DHCPACK on%` 메시지를 자동 식별·파싱하여 `radius.dhcp_log` 테이블에 정규화 형태로 지속 저장(자동화)
-- [ ] 적재된 정보가 있는 radius DB를 이용한 주소 관리
+- [x] DHCP 고정 IP 주소 할당을 위한 `vlan_subnet_profiles` VLAN별 서브넷 프로파일 테이블과 `subnet_ip_pool` 서브넷별 IP 목록 + 상태 + MAC 매핑 테이블 생성
+- [x] `vlan_subnet_profiles` BEFROE INSERT TRIGGER 등록 [ `broadcast_addr, gateway_addr, start_ip_addr/end_ip_addr -> start_ip_number/end_ip_number, vlan_group_name = VLAN_<id> 자동 설정` ]
+- [ ] `vlan_subnet_profiles` 등록 후 `subnet_ip_pool` 자동 생성하는 AFTER INSERT TRIGGER 등록
   
 ---
