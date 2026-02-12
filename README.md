@@ -110,29 +110,15 @@
 - [x] VMware NAT(vmnet8) 기반 외부 인터넷 접근 경로 확보(패키지 설치/업데이트 목적)
 - [x] VLAN/게이트웨이(SVI) 뼈대 구성
 
-### 6.2 802.1X 인증 인프라(FreeRADIUS)
-- [x] Ubuntu 서버 기본 세팅
-- [x] FreeRADIUS 설치 및 초기 구성
-- [x] 테스트 사용자/인증자(스위치) 등록 및 인증 흐름 검증(PEAP 기반)
+### 6.2 802.1X 인증 인프라(FreeRADIUS) 
+→ [정리](docs/인증 서버 인프라 구성.md) 
 
-### 6.3 DHCP 구성
-- [x] VLAN별 DHCP Scope/Pool 구성
-- [x] 단말 DHCP 할당 검증(인증/비인증 포트 시나리오 분리)
-- [x] 인증 성공 후 VLAN 전환 + DHCP 재할당(End-to-End 검증)
+→ [정리](docs/클라이언트 802.1X 인증 테스트.md)
 
-### 6.4 Syslog→MySQL로 수집한 DHCP 로그를 DHCPACK 기준으로 파싱하고, IP 할당현황/고정IP 관리를 자동화
-- [x] `rsyslog-mysql` 설치 및 MySQL(syslog) 적재 확인
-- [x] 계정/권한 확인 및 `SystemEvents` 로그 저장 여부 검증
-- [x] `DHCPACK on%` 메시지 패턴 식별 및 파싱 대상 필드 정의  
-- [x] `syslog.SystemEvents`에서 DHCP 관련 로그 조회/필터링 검증 (`Message LIKE 'DHCPACK on%'`)
-- [x] `radius` DB에 `dhcp_log` 테이블 생성 후, SystemEvents 로그를 파싱하여 저장(정규화) 완료
-- [x] 적재 결과 검증: `radius.dhcp_log`에 최신 레코드가 누적되는지 확인
-- [x] DHCP 고정 IP 주소 할당을 위한 `vlan_subnet_profiles` VLAN별 서브넷 프로파일 테이블과 `subnet_ip_pool` 서브넷별 IP 목록 + 상태 + MAC 매핑 테이블 생성
-- [x] 적재된 이벤트 중 `DHCPACK on%` 메시지를 자동 식별·파싱하여 `radius.dhcp_log` 테이블에 정규화 형태로 지속 저장(자동화)
-- [x] `dhcp_log` 적재 후 `subnet_ip_pool` MAC 갱신 테스트
-- [x] DB에 저장된 “서브넷(스코프) 정보 + IP 풀 + MAC 바인딩”을 기준으로 `isc-dhcp-server` 설정을 자동 생성/갱신하고, 단말에 고정 IP(Reservation) 할당
+### 6.4 DHCP 구성 및 Syslog→MySQL로 수집한 DHCP 로그를 DHCPACK 기준으로 파싱하고, IP 할당현황/고정IP 관리를 자동화 
+→ [정리](docs/DHCP_MYSQL을 활용한 IP 주소 관리 자동화.md)
 
 ### 6.5 FreeRADIUS–DB 연계를 통해 사용자·단말·IP를 통합 매핑하고, 802.1X 기반 접근통제 및 IP 할당 추적 체계
-- [x] Docker 기반 Oracle DB 서버 [사용자 계정 및 인사정보] 구성 + FreeRADIUS 서버 연결 테스트
-- [x] Oracle(employee) 계정 정보를 MySQL(radius)로 복제해 radcheck·radusergroup에 반영하고, 사용자 인증 및 부서(VLAN) 연동을 자동화
+→ [정리](./docs/사용자 계정 연동 및 사용자 인증과 IP 주소 할당.md)
+
 ---
